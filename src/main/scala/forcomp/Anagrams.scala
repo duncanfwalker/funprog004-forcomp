@@ -64,10 +64,12 @@ object Anagrams {
    *    List(('a', 1), ('e', 1), ('t', 1)) -> Seq("ate", "eat", "tea")
    *
    */
-  lazy val dictionaryByOccurrences: Map[Occurrences, List[Word]] = ???
+  lazy val dictionaryByOccurrences: Map[Occurrences, List[Word]] = {
+    dictionary.groupBy(o => wordOccurrences(o))
+  }
 
   /** Returns all the anagrams of a given word. */
-  def wordAnagrams(word: Word): List[Word] = ???
+  def wordAnagrams(word: Word): List[Word] = dictionaryByOccurrences(wordOccurrences(word))
 
   /** Returns the list of all subsets of the occurrence list.
    *  This includes the occurrence itself, i.e. `List(('k', 1), ('o', 1))`
@@ -91,7 +93,22 @@ object Anagrams {
    *  Note that the order of the occurrence list subsets does not matter -- the subsets
    *  in the example above could have been displayed in some other order.
    */
-  def combinations(occurrences: Occurrences): List[Occurrences] = ???
+  def combinations(occurrences: Occurrences): List[Occurrences] = {
+    val empty = List(List[(Char, Int)]())
+    occurrences.foldLeft(empty)((a, b) => multiply(a, occurenceRange(b)))
+  }
+
+
+  def occurenceRange(occurence: (Char, Int)): Occurrences = {
+    val (char, max) = occurence
+    (for (i <- 0 to max) yield (char, i)).toList
+  }
+
+
+  def multiply(memo: List[Occurrences], next: Occurrences): List[Occurrences] = {
+    for (occurrences <- memo; char <- next)
+      yield if (char._2 != 0) occurrences ::: List(char) else occurrences
+  }
 
   /** Subtracts occurrence list `y` from occurrence list `x`.
    *
@@ -103,7 +120,14 @@ object Anagrams {
    *  Note: the resulting value is an occurrence - meaning it is sorted
    *  and has no zero-entries.
    */
-  def subtract(x: Occurrences, y: Occurrences): Occurrences = ???
+  // TODO: is there a way to improve readablity with a for comprehension?
+  def subtract(x: Occurrences, y: Occurrences): Occurrences = {
+    val map = y.toMap
+    x.map(xi => (xi._1, xi._2 - map.get(xi._1).getOrElse(0)))
+      .filterNot(_._2 == 0)
+      .distinct
+      .sorted
+  }
 
   /** Returns a list of all anagram sentences of the given sentence.
    *
@@ -145,5 +169,37 @@ object Anagrams {
    *
    *  Note: There is only one anagram of an empty sentence.
    */
-  def sentenceAnagrams(sentence: Sentence): List[Sentence] = ???
+  def sentenceAnagrams(sentence: Sentence): List[Sentence] = {
+    val target: Occurrences = sentenceOccurrences(sentence)
+    val inSentenseAndDictionary: Set[Occurrences] = combinations(target).filter(dictionaryByOccurrences.contains).toSet
+    findOccurrenceLists(List[Occurrences](), target)(inSentenseAndDictionary).flatMap(occurrancesListToSentense)
+  }
+
+  // TODO: could this be tail recursive
+  // TODO: break this down a bit
+  def findOccurrenceLists(foundChain: List[Occurrences], remaining: Occurrences)
+                         (implicit valid: Set[Occurrences]): List[List[Occurrences]] = {
+    if (remaining.isEmpty) List(foundChain)
+    else combinations(remaining)
+      .toSet
+      .intersect(valid)
+      .foldLeft(List[List[Occurrences]]())(
+        (alreadyFound, occurrences) => {
+          val longerFoundChain = foundChain ::: List(occurrences)
+          val decrementedRemaining = subtract(remaining, occurrences)
+          alreadyFound ::: findOccurrenceLists(longerFoundChain, decrementedRemaining)
+        }
+      )
+  }
+
+  def occurrancesListToSentense(occurrences: List[Occurrences]): List[Sentence] = {
+    val empty = List(List[Word]())
+    occurrences.foldLeft(empty)((a, b) => multiplySentences(a, dictionaryByOccurrences(b)))
+  }
+
+
+  // TODO: reduce duplication with multiply()
+  def multiplySentences(memo: List[Sentence], next: List[Word]): List[Sentence] = {
+    for (sentence <- memo; word <- next) yield sentence ::: List(word)
+  }
 }

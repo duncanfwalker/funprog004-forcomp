@@ -28,6 +28,11 @@ class AnagramsSuite extends FunSuite  {
     assert(dictionaryByOccurrences.get(List(('a', 1), ('e', 1), ('t', 1))).map(_.toSet) === Some(Set("ate", "eat", "tea")))
   }
 
+//  test("") {
+//    List("ab","ba");
+//    List expected = List("abc","acb","bac","bca","cab","cba");
+//    assert(expected === wordAnagrams0("c",anagrams) )
+//  }
 
 	test("word anagrams: married") {
     assert(wordAnagrams("married").toSet === Set("married", "admirer"))
@@ -47,7 +52,14 @@ class AnagramsSuite extends FunSuite  {
   }
 
 
-	test("combinations: []") {
+  test("subtract: nut - nu") {
+    val nus = List(('n', 1),('u', 1),('t', 1))
+    val nu = List(('n', 1),('u', 1))
+    val t = List(('t', 1))
+    assert(subtract(nus, nu) === t)
+  }
+
+  test("combinations: []") {
     assert(combinations(Nil) === List(Nil))
   }
 
