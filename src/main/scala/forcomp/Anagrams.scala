@@ -170,36 +170,21 @@ object Anagrams {
    *  Note: There is only one anagram of an empty sentence.
    */
   def sentenceAnagrams(sentence: Sentence): List[Sentence] = {
-    val target: Occurrences = sentenceOccurrences(sentence)
-    val inSentenseAndDictionary: Set[Occurrences] = combinations(target).filter(dictionaryByOccurrences.contains).toSet
-    findOccurrenceLists(List[Occurrences](), target)(inSentenseAndDictionary).flatMap(occurrancesListToSentense)
+    findWordChain(sentenceOccurrences(sentence))
+  }
+
+  def findMatchingWords(occurrences: Occurrences) = {
+    (dictionaryByOccurrences withDefaultValue List[Word]())(occurrences)
   }
 
   // TODO: could this be tail recursive
-  // TODO: break this down a bit
-  def findOccurrenceLists(foundChain: List[Occurrences], remaining: Occurrences)
-                         (implicit valid: Set[Occurrences]): List[List[Occurrences]] = {
-    if (remaining.isEmpty) List(foundChain)
-    else combinations(remaining)
-      .toSet
-      .intersect(valid)
-      .foldLeft(List[List[Occurrences]]())(
-        (alreadyFound, occurrences) => {
-          val longerFoundChain = foundChain ::: List(occurrences)
-          val decrementedRemaining = subtract(remaining, occurrences)
-          alreadyFound ::: findOccurrenceLists(longerFoundChain, decrementedRemaining)
-        }
-      )
+  def findWordChain(remaining: Occurrences): List[Sentence] = {
+    if (remaining.isEmpty) List(List())
+    else for(
+      possible <- combinations(remaining);
+      word <- findMatchingWords(possible);
+      wordChain <- findWordChain(subtract(remaining,wordOccurrences(word)))
+    ) yield List(word) ::: wordChain
   }
 
-  def occurrancesListToSentense(occurrences: List[Occurrences]): List[Sentence] = {
-    val empty = List(List[Word]())
-    occurrences.foldLeft(empty)((a, b) => multiplySentences(a, dictionaryByOccurrences(b)))
-  }
-
-
-  // TODO: reduce duplication with multiply()
-  def multiplySentences(memo: List[Sentence], next: List[Word]): List[Sentence] = {
-    for (sentence <- memo; word <- next) yield sentence ::: List(word)
-  }
 }
